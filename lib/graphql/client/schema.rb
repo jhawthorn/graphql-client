@@ -22,7 +22,7 @@ module GraphQL
           when GraphQL::ListType
             define_class(definition, ast_nodes, type.of_type).to_list_type
           else
-            get_class(type.name).define_class(definition, ast_nodes)
+            class_definition_cache[[type.name, definition, ast_nodes]]
           end
 
           ast_nodes.each do |ast_node|
@@ -34,6 +34,13 @@ module GraphQL
           end
 
           type_class
+        end
+
+        def class_definition_cache
+          @class_definition_cache ||= Hash.new do |h, k|
+            (type_name, definition, ast_nodes) = k
+            h[k] = get_class(type_name).define_class(definition, ast_nodes)
+          end
         end
 
         def get_class(type_name)
