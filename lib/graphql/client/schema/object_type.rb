@@ -24,6 +24,21 @@ module GraphQL
           attr_reader :_spreads
         end
 
+        module FieldReaders
+          def method_missing(name, *args)
+            if field = self.class::PREDICATES[name]
+              !!@data[field.to_s]
+            elsif field = self.class::METHODS[name]
+              type = self.class::FIELDS[field]
+              @casted_data.fetch(name) do
+                @casted_data[name] = type.cast(@data[field.to_s], @errors.filter_by_path(field.to_s))
+              end
+            else
+              super
+            end
+          end
+        end
+
         def define_class(definition, ast_nodes)
           # First, gather all the ast nodes representing a certain selection, by name.
           # We gather AST nodes into arrays so that multiple selections can be grouped, for example:
@@ -65,41 +80,16 @@ module GraphQL
           klass
         end
 
-        PREDICATE_CACHE = Hash.new { |h, name|
-          h[name] = -> { @data[name] ? true : false }
-        }
-
-        METHOD_CACHE = Hash.new { |h, key|
-          h[key] = -> {
-            name = key.to_s
-            type = self.class::FIELDS[key]
-            @casted_data.fetch(name) do
-              @casted_data[name] = type.cast(@data[name], @errors.filter_by_path(name))
-            end
-          }
-        }
-
-        MODULE_CACHE = Hash.new do |h, fields|
-          h[fields] = Module.new do
-            fields.each do |name|
-              GraphQL::Client::Schema::ObjectType.define_cached_field(name, self)
-            end
-          end
-        end
-
         def define_fields(fields)
           const_set :FIELDS, fields
-          mod = MODULE_CACHE[fields.keys.sort]
-          include mod
-        end
-
-        def self.define_cached_field(name, ctx)
-          key = name
-          name = -name.to_s
-          method_name = ActiveSupport::Inflector.underscore(name)
-
-          ctx.send(:define_method, method_name, &METHOD_CACHE[key])
-          ctx.send(:define_method, "#{method_name}?", &PREDICATE_CACHE[name])
+          methods = Hash[
+            fields.keys.map do |name|
+              [ActiveSupport::Inflector.underscore(name).to_sym, name]
+            end
+          ]
+          const_set :METHODS, methods
+          const_set :PREDICATES, methods.transform_keys { |k| :"#{k}?"  }
+          include FieldReaders
         end
 
         def define_field(name, type)
