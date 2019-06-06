@@ -219,15 +219,7 @@ module GraphQL
             raise UnimplementedFieldError, "undefined field `#{e.name}' on #{type} type. https://git.io/v1y3m"
           end
 
-          if @data.key?(field.name)
-            error_class = ImplicitlyFetchedFieldError
-            message = "implicitly fetched field `#{field.name}' on #{type} type. https://git.io/v1yGL"
-          else
-            error_class = UnfetchedFieldError
-            message = "unfetched field `#{field.name}' on #{type} type. https://git.io/v1y3U"
-          end
-
-          raise error_class, message
+          error_on_defined_field(field.name)
         end
 
         def inspect
@@ -245,6 +237,19 @@ module GraphQL
           buf << " " << ivars.join(" ") if ivars.any?
           buf << ">"
           buf
+        end
+
+        private
+
+        def error_on_defined_field(name)
+          type = self.class.type
+          if @data.key?(name)
+            raise ImplicitlyFetchedFieldError,
+              "implicitly fetched field `#{name}' on #{type} type. https://git.io/v1yGL"
+          else
+            raise UnfetchedFieldError,
+              "unfetched field `#{name}' on #{type} type. https://git.io/v1y3U"
+          end
         end
       end
     end
