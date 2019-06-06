@@ -48,7 +48,7 @@ module GraphQL
 
           klass = Class.new(self)
           klass.const_set :FIELDS, FIELDS_CACHE[field_classes]
-          klass.define_fields(field_classes)
+          klass.define_fields(field_classes.keys)
           klass.instance_variable_set(:@source_definition, definition)
           klass.instance_variable_set(:@_spreads, definition.indexes[:spreads][ast_nodes.first])
 
@@ -85,7 +85,7 @@ module GraphQL
         FIELDS_CACHE = Hash.new { |h, k| h[k] = k }
 
         def define_fields(fields)
-          mod = MODULE_CACHE[fields.keys.sort]
+          mod = MODULE_CACHE[fields.sort]
           include mod
         end
 
