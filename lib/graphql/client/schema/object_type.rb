@@ -232,15 +232,7 @@ module GraphQL
             raise e
           end
 
-          field = type.all_fields.find do |f|
-            f.name == e.name.to_s || ActiveSupport::Inflector.underscore(f.name) == e.name.to_s
-          end
-
-          unless field
-            raise UnimplementedFieldError, "undefined field `#{e.name}' on #{type} type. https://git.io/v1y3m"
-          end
-
-          error_on_defined_field(field.name)
+          raise UnimplementedFieldError, "undefined field `#{e.name}' on #{type} type. https://git.io/v1y3m"
         end
 
         def inspect
