@@ -16,7 +16,14 @@ module GraphQL
 
             define_singleton_method(:type) { type }
             define_singleton_method(:fields) { fields }
+
+            const_set(:FIELDS, {})
+            define_fields(base_fields)
           end
+        end
+
+        def base_fields
+          type.all_fields.map(&:name).map(&:to_sym) | [:__typename]
         end
 
         def define_class(definition, ast_nodes)
@@ -48,7 +55,10 @@ module GraphQL
 
           klass = Class.new(self)
           klass.const_set :FIELDS, FIELDS_CACHE[field_classes]
-          klass.define_fields(field_classes.keys)
+
+          extra_attributes = field_classes.keys - base_fields
+          klass.define_fields(extra_attributes) if extra_attributes.any?
+
           klass.instance_variable_set(:@source_definition, definition)
           klass.instance_variable_set(:@_spreads, definition.indexes[:spreads][ast_nodes.first])
 
@@ -60,16 +70,27 @@ module GraphQL
           klass
         end
 
-        PREDICATE_CACHE = Hash.new { |h, name|
-          h[name] = -> { @data[name] ? true : false }
+        PREDICATE_CACHE = Hash.new { |h, key|
+          h[key] = -> {
+            name = key.to_s
+            if self.class::FIELDS.key?(key)
+              @data[name] ? true : false
+            else
+              error_on_defined_field(name)
+            end
+          }
         }
 
         METHOD_CACHE = Hash.new { |h, key|
           h[key] = -> {
             name = key.to_s
             type = self.class::FIELDS[key]
-            @casted_data.fetch(name) do
-              @casted_data[name] = type.cast(@data[name], @errors.filter_by_path(name))
+            if type
+              @casted_data.fetch(name) do
+                @casted_data[name] = type.cast(@data[name], @errors.filter_by_path(name))
+              end
+            else
+              error_on_defined_field(name)
             end
           }
         }
@@ -95,7 +116,7 @@ module GraphQL
           method_name = ActiveSupport::Inflector.underscore(name)
 
           ctx.send(:define_method, method_name, &METHOD_CACHE[key])
-          ctx.send(:define_method, "#{method_name}?", &PREDICATE_CACHE[name])
+          ctx.send(:define_method, "#{method_name}?", &PREDICATE_CACHE[key])
         end
 
         def define_field(name, type)

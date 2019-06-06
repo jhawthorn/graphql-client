@@ -270,8 +270,6 @@ class TestQueryResult < MiniTest::Test
     GRAPHQL
 
     response = @client.query(Temp::Query)
-    refute response.data.me.respond_to?(:name)
-    refute response.data.me.respond_to?(:company)
 
     person = Temp::Person.new(response.data.me)
     assert_equal "Josh", person.name
@@ -830,7 +828,6 @@ class TestQueryResult < MiniTest::Test
     repo = Temp::RepositoryFragment.new(response.data.repository)
 
     assert_equal "rails", repo.name
-    refute repo.owner.respond_to?(:login)
 
     owner = Temp::UserFragment.new(repo.owner)
     assert_equal "josh", owner.login
@@ -927,7 +924,6 @@ class TestQueryResult < MiniTest::Test
 
     repo = Temp::RepositoryFragment.new(response.data.repository)
     assert_equal "rails", repo.name
-    refute repo.owner.respond_to?(:login)
 
     owner = Temp::UserFragment.new(repo.owner)
     assert_equal "josh", owner.login
