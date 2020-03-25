@@ -222,7 +222,8 @@ module GraphQL
 
           if @data.key?(field.name)
             error_class = ImplicitlyFetchedFieldError
-            message = "implicitly fetched field `#{field.name}' on #{type} type. https://git.io/v1yGL"
+            message = "implicitly fetched field `#{field.name}' on #{type} type. https://git.io/v1yGL.\n"
+            message += "allowed fields are #{self.class::FIELDS.keys.inspect} for definition at #{self.class.source_definition.name}"
           else
             error_class = UnfetchedFieldError
             message = "unfetched field `#{field.name}' on #{type} type. https://git.io/v1y3U"
